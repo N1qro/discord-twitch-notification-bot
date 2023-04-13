@@ -1,10 +1,12 @@
 import os
 import sys
 
+# magic spell right here
 sys.path.append(os.getcwd())
 
 from sqlite3 import IntegrityError
 from typing import Literal, Union
+from embeds import getCheckEmbed
 
 import discord
 from discord.ext import commands
@@ -43,55 +45,91 @@ async def on_guild_remove(guild: discord.guild.Guild):
     db.commit()
 
 
+@bot.group(name="set")
+@commands.has_permissions(administrator=True)
+async def set(ctx: commands.Context):
+    if ctx.invoked_subcommand is None:
+        return await ctx.send("❓ Usage: **/twitch set <role|channel> <@role|#channel>**")
+
+
+@set.command(name="role")
+async def set_role(ctx: commands.Context, role: Union[discord.Role, str] = None):
+    if role is None:
+        return await ctx.send("❓ Usage: **/twitch set role <#role>**")
+
+    if isinstance(role, str):
+        return await ctx.send(f"Unresolved role: {role}")
+
+    db.set_role(role.id, ctx.guild.id)
+    await ctx.send(f"You selected {role.mention} as your alert role!", silent=True)
+
+
+@set.command(name="channel")
+async def set_channel(ctx: commands.Context, channel: Union[discord.TextChannel, str] = None):
+    if channel is None:
+        return await ctx.send("❓ Usage: **/twitch set role <@role>**")
+
+    if isinstance(channel, str):
+        return await ctx.send(f"Unresolved channel: {channel}")
+
+    db.set_channel(channel.id, ctx.guild.id)
+    await ctx.send(f"You selected {channel.mention} as your alert channel!", silent=True)
+
+
+@bot.group(name="reset")
+@commands.has_permissions(administrator=True)
+async def reset(ctx: commands.Context):
+    if not ctx.invoked_subcommand:
+        await ctx.send("❓ Usage: **/twitch reset <role|channel>**")
+
+
+@reset.command(name="role")
+async def reset_role(ctx: commands.Context):
+    data = db.get_guild_data(ctx.guild.id)
+    print(data)
+    if data.roleId is not None:
+        db.reset_role(ctx.guild.id)
+        return await ctx.send(f"Role <@&{data.roleId}> will no longer be alerted.", silent=True)
+    await ctx.send("You haven't setup any notification role yet")
+
+
+@reset.command(name="channel")
+async def reset_channel(ctx: commands.Context):
+    data = db.get_guild_data(ctx.guild.id)
+    if data.channelId is not None:
+        db.reset_channel(ctx.guild.id)
+        return await ctx.send(f"Channel <#{data.channelId}> will no longer be messaged", silent=True)
+
+
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def check(ctx: commands.context.Context):
-    guild_id, channel_id, role_id = db.get_guild_data(ctx.guild.id)
-
-    guild_status = Status.good if guild_id else Status.bad
-    role_status = Status.good if role_id else Status.bad
-    channel_status = Status.good if channel_id else Status.bad
-
-    is_everything_correct = all(item == Status.good for item in (guild_status, role_status, channel_status))
-    embed_color = 0x46f339 if is_everything_correct else 0xf50f0f
-
-    embed = discord.Embed(title="Status preview", description="Will help you determine what is missing or not", color=embed_color)
-    embed.set_author(name=bot.user.display_name, icon_url=bot.user.display_avatar)
-    embed.add_field(name="Guild setup", value=guild_status, inline=True)
-    embed.add_field(name="Permissions", value=Status.good, inline=True)
-    embed.add_field(name="", value="", inline=True)
-    embed.add_field(name="Alert role set", value=role_status, inline=True)
-    embed.add_field(name="Announcement channel set", value=channel_status, inline=True)
-    embed.set_footer(text="Use '/twitch link help' to see how to set missing information if needed")
-    await ctx.send(embed=embed)
+async def check(ctx: commands.Context):
+    embed = getCheckEmbed(bot, db, ctx.guild.id)
+    await ctx.send(embed=embed, silent=True, reference=ctx.message)
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def set(
-    ctx: commands.context.Context,
-    mode: Literal["channel", "role", "help"] = "help",
-    channel_or_role: Union[discord.channel.TextChannel, discord.role.Role, str] = None
+async def setup(
+    ctx: commands.Context,
+    role: Union[discord.Role, str] = None,
+    channel: Union[discord.TextChannel, str] = None
 ):
-    if mode == "help":
-        return await ctx.send("TODO")
+    if role is None:
+        return await ctx.send("❓ Usage: **/twitch setup <@ROLE> <#channel>**")
 
-    try:
-        assert mode in ("channel", "role", "help"), "Unrecognized command. Type /twitch set help"
-        assert not isinstance(channel_or_role, str), f"Given {mode} not found"
-        assert (mode == "channel" and isinstance(channel_or_role, discord.channel.TextChannel)) \
-            or (mode == "role" and isinstance(channel_or_role, discord.role.Role)), \
-            f"This command requires {mode} to be provided"
-    except AssertionError as e:
-        await ctx.send(str(e))
-    else:
-        if mode == "channel":
-            db.set_channel(channel_or_role.id, ctx.guild.id)
-            await ctx.send(f"You selected {channel_or_role} as your alert channel!")
-        elif mode == "role":
-            db.set_role(channel_or_role.id, ctx.guild.id)
-            await ctx.send(f"You selected {channel_or_role} as your alert role!")
+    if channel is None:
+        return await ctx.send("❓ Usage: **/twitch setup <@role> <#CHANNEL>**")
 
+    if isinstance(role, str):
+        return await ctx.send(f"Unresolved role: {role}")
+
+    if isinstance(channel, str):
+        return await ctx.send(f"Unresolved channel: {channel}")
+
+    db.set_role(role.id, ctx.guild.id)
+    db.set_channel(channel.id, ctx.guild.id)
+    await ctx.send(f"You've setup the bot with {role.mention} role and {channel.mention} channel", silent=True)
 
 if __name__ == "__main__":
     bot.run(os.getenv("TOKEN"))

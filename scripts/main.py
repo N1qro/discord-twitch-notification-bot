@@ -1,26 +1,30 @@
 import os
-import pickle
-from sqlite3 import Connection, IntegrityError
+import sys
+
+sys.path.append(os.getcwd())
+
+from sqlite3 import IntegrityError
 from typing import Literal, Union
 
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+from enums import Status
 
 assert load_dotenv(), "No .env file configured"
-from db import db, set_channel, set_role
+from scripts.db import Database
 
 permissions = discord.Intents.default()
 permissions.guilds = True
 permissions.message_content = True
 permissions.members = True
 bot = commands.Bot(os.getenv("PREFIX"), intents=permissions)
+db = Database()
 
 
 @bot.event
 async def on_ready():
     print("Bot started")
-    print(bot.command_prefix)
 
 
 @bot.event
@@ -42,24 +46,22 @@ async def on_guild_remove(guild: discord.guild.Guild):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def check(ctx: commands.context.Context):
-    good = "✅ Done"
-    bad = "❌ Not given"
-    guild_id, channel_id, role_id = db.cursor().execute("""
-        SELECT *
-        FROM general
-        WHERE guild_id == ?
-    """, (ctx.guild.id,)).fetchone()
+    guild_id, channel_id, role_id = db.get_guild_data(ctx.guild.id)
 
-    is_everything_correct = all(item is not None for item in (guild_id, channel_id, role_id))
+    guild_status = Status.good if guild_id else Status.bad
+    role_status = Status.good if role_id else Status.bad
+    channel_status = Status.good if channel_id else Status.bad
+
+    is_everything_correct = all(item == Status.good for item in (guild_status, role_status, channel_status))
     embed_color = 0x46f339 if is_everything_correct else 0xf50f0f
 
-    embed=discord.Embed(title="Status preview", description="Will help you determine what is missing or not", color=embed_color)
+    embed = discord.Embed(title="Status preview", description="Will help you determine what is missing or not", color=embed_color)
     embed.set_author(name=bot.user.display_name, icon_url=bot.user.display_avatar)
-    embed.add_field(name="Guild setup", value=good if guild_id else bad, inline=True)
-    embed.add_field(name="Permissions", value="✅ Done", inline=True)
+    embed.add_field(name="Guild setup", value=guild_status, inline=True)
+    embed.add_field(name="Permissions", value=Status.good, inline=True)
     embed.add_field(name="", value="", inline=True)
-    embed.add_field(name="Alert role set", value=good if role_id else bad, inline=True)
-    embed.add_field(name="Announcement channel set", value=good if channel_id else bad, inline=True)
+    embed.add_field(name="Alert role set", value=role_status, inline=True)
+    embed.add_field(name="Announcement channel set", value=channel_status, inline=True)
     embed.set_footer(text="Use '/twitch link help' to see how to set missing information if needed")
     await ctx.send(embed=embed)
 
@@ -84,10 +86,10 @@ async def set(
         await ctx.send(str(e))
     else:
         if mode == "channel":
-            set_channel(ctx.guild.id, channel_or_role.id)
+            db.set_channel(channel_or_role.id, ctx.guild.id)
             await ctx.send(f"You selected {channel_or_role} as your alert channel!")
         elif mode == "role":
-            set_role(ctx.guild.id, channel_or_role.id)
+            db.set_role(channel_or_role.id, ctx.guild.id)
             await ctx.send(f"You selected {channel_or_role} as your alert role!")
 
 

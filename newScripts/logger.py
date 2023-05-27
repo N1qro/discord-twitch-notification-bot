@@ -6,7 +6,7 @@ init(autoreset=True)
 
 class Status(Enum):
     WARNING = f"{Style.BRIGHT}{Fore.YELLOW}WARNING{Style.RESET_ALL}"
-    INFO = f"{Style.BRIGHT}{Fore.CYAN}INFO   {Style.RESET_ALL}"
+    INFO = f"{Style.BRIGHT}{Fore.CYAN}INFO{Style.RESET_ALL}"
     SUCCESS = f"{Style.BRIGHT}{Fore.GREEN}SUCCESS{Style.RESET_ALL}"
     FAILURE = f"{Style.BRIGHT}{Fore.RED}FAILURE{Style.RESET_ALL}"
 
@@ -28,7 +28,7 @@ class Log:
             def wrapper(text: str) -> str:
                 timestamp = datetime.now().strftime("%Y-%m-%d %X")
                 timestamp_string = f"{Style.BRIGHT}{Fore.BLACK}{timestamp}"
-                status_string = f"{timestamp_string} {status.value}  "
+                status_string = f"{timestamp_string} {status.value}\t"
                 print(status_string + function(text))
             return wrapper
         return display

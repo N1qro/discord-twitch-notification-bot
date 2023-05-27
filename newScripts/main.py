@@ -1,26 +1,24 @@
-import os
-import discord
-import environ_loader
 import asyncio
+import os
 import sys
-import signal
-from database import Database
-from aiohttp.client_exceptions import ClientConnectionError
-from logger import Log
-import asyncpg
-from discord.ext import commands
 
+import discord
+import interactions
+from aiohttp.client_exceptions import ClientConnectionError
+from database import Database
+from discord.ext import commands
+from environ_loader import load_env
+from events import EventCog, cleanup, setup_hook
+from logger import Log
+from owner_commands import OwnerCog
+
+# Установка прав бота и, пока что, пустого префикса
 permissions = discord.Intents()
 permissions.message_content = True
 permissions.messages = True
 permissions.reactions = True
-bot = commands.Bot(command_prefix=os.getenv("BOT_PREFIX"), intents=permissions)
-disconnect_fired = asyncio.Event()
-
-
-@bot.event
-async def on_ready():
-    Log.success("Bot started!")
+bot = commands.Bot(command_prefix=None, intents=permissions)
+bot.db: Database = None
 
 
 @bot.command()
@@ -30,43 +28,49 @@ async def test(ctx: commands.Context):
     await ctx.channel.send("Registered!")
 
 
-@bot.command()
-@commands.is_owner()
-async def shutdown(ctx: commands.Context):
-    Log.info("Manual shutdown initiated. Closing the connection")
-    await bot.close()
-
-
-@bot.event
-async def on_disconnect():
-    Log.info("Closing the database connection pool")
-    await bot.pool.close()
-    Log.info("Database connection pool closed!")
-    disconnect_fired.set()
-
-
-@bot.event
-async def setup_hook():
-    Log.info("Preparing bot setup...")
-    bot.db = await Database.connect()
-    Log.success("Successfully connected to the db!")
-
-
 async def main():
     try:
+        # Подключаем модули бота
+        await bot.add_cog(EventCog(bot))
+        await bot.add_cog(OwnerCog(bot))
+
+        # Выполняем вход и подключаемся к бд
         await bot.login(os.getenv("BOT_TOKEN"))
+        await setup_hook(bot)
         Log.success("Logged in using discord token!")
+
+        # Подключаемся к серверам Discord
         await bot.connect()
-        await disconnect_fired.wait()
     except discord.LoginFailure as e:
         Log.failure(str(e))
+        await bot.close()
     except ClientConnectionError:
         Log.failure("Check your internet connection!")
+    except Exception as e:
+        print('FUCK', e)
+    finally:
+        await cleanup(bot)
 
 
 if __name__ == "__main__":
+    # Загрузка переменных среды и установка префикса
+    load_env()
+    bot.command_prefix = os.getenv("BOT_PREFIX")
+
+    # В случае, если бот будет запущен на Windows, без этого
+    # asyncio будет выдавать множество ошибок после завершения программы
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        Log.warning("Pressing Ctrl+C will freeze the script for some time")
 
+    # Главная часть
     Log.info("Launching the bot...")
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Ручной выход из приложения на Ctrl+C
+        pass
+    finally:
+        # Вывод при отсутствии ошибок
+        if sys.exc_info()[0] is None:
+            Log.info("Bot offline.")

@@ -10,34 +10,28 @@ from queries import Query
 class Database:
     @private
     def __init__(self, pool) -> None:
+        """Чтобы создать обьект класса, используйте `Database.connect()`"""
         self.pool = pool
 
     @classmethod
     async def connect(cls):
-        if await cls.check_connection():
+        status = await cls.check_connection()
+        if status is True:
             pool = await asyncpg.create_pool()
             return cls(pool)
+        return status
 
     @staticmethod
     async def check_connection():
-        """Проверяет возможность подключения к базе данных.
-           Оканчивает скрипт в случае невозможности подключения"""
+        """Проверяет возможность подключения к базе данных."""
         try:
             Log.info("Cheking the PostgreSQL connection possibility...")
             conn = await asyncpg.connect(timeout=5)
             await conn.close()
         except asyncio.exceptions.TimeoutError:
-            Log.failure("Check your PostgreSQL connection, timeout error")
-            sys.exit(2)
+            raise Exception("Check your PostgreSQL connection, timeout error")
         except ConnectionRefusedError:
-            Log.failure("Is your PostgreSQL port correct? Connection refused")
-            sys.exit(3)
-        except asyncpg.exceptions.InvalidAuthorizationSpecificationError as e:
-            Log.failure(str(e))
-            sys.exit(4)
-        except Exception as e:
-            Log.failure(str(e))
-            sys.exit(-1)
+            raise Exception("Is your PostgreSQL port correct? Connection refused")
         else:
             Log.success("Connection possible. Can proceed further!")
             return True

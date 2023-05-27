@@ -10,19 +10,20 @@
 """
 
 
-import os
-if os.getenv("DOCKER") in (False, None):
-    from dotenv import load_dotenv
-    assert load_dotenv(), "No .env is configured!"
+def load_env():
+    import os
+    if os.getenv("DOCKER") in (False, None):
+        from dotenv import load_dotenv
+        assert load_dotenv(), "No .env is configured!"
 
-    assert os.getenv("VALIDATE"), "(VALIDATE) variable is not set"
-    if os.getenv("VALIDATE").lower() in ("true", "t", "1", "yes", "y"):
-        assert os.getenv("PGHOST"), "PostgreSQL host is not set"
-        assert os.getenv("PGUSER"), "PostgreSQL user is not set"
-        assert os.getenv("PGPASSWORD"), "PostgreSQL password is not set"
-        assert os.getenv("PGDATABASE"), "PostgreSQL database is not set"
-        assert os.getenv("BOT_PREFIX"), "Discord bot command prefix isn't set"
-        assert os.getenv("BOT_TOKEN"), "Discord bot token isn't set"
+        assert os.getenv("VALIDATE"), "(VALIDATE) variable is not set"
+        if os.getenv("VALIDATE").lower() in ("true", "t", "1", "yes", "y"):
+            assert os.getenv("PGHOST"), "PostgreSQL host is not set"
+            assert os.getenv("PGUSER"), "PostgreSQL user is not set"
+            assert os.getenv("PGPASSWORD"), "PostgreSQL password is not set"
+            assert os.getenv("PGDATABASE"), "PostgreSQL database is not set"
+            assert os.getenv("BOT_PREFIX"), "Discord bot command prefix isn't set"
+            assert os.getenv("BOT_TOKEN"), "Discord bot token isn't set"
 
-    del load_dotenv
-del os
+        del load_dotenv
+    del os

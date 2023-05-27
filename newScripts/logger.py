@@ -11,7 +11,6 @@ class Status(Enum):
     FAILURE = f"{Style.BRIGHT}{Fore.RED}FAILURE{Style.RESET_ALL}"
 
 
-
 class Log:
 
     def __init__(self) -> None:
@@ -49,7 +48,3 @@ class Log:
     @display(Status.FAILURE)
     def failure(text: str) -> str:
         return text
-
-
-if __name__ == "__main__":
-    Log.success("Hi!")

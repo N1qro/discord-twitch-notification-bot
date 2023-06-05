@@ -1,6 +1,8 @@
-import aiohttp
 import asyncio
 import os
+from typing import Union
+
+import aiohttp
 
 
 class TwitchRequests:
@@ -21,7 +23,7 @@ class TwitchRequests:
         }
 
     @classmethod
-    async def getChannelInfo(cls, url):
+    async def getChannelInfo(cls, url) -> Union[dict, None]:
         login = url[url.rfind("/") + 1:]
         async with aiohttp.ClientSession(headers=cls.headers) as session:
             response = await session.get(url=cls.user_endpoint, params={"login": login})

@@ -40,10 +40,11 @@ class Database:
             Log.info("Cheking the PostgreSQL connection possibility...")
             conn = await asyncpg.connect(timeout=5)
             await conn.close()
+            asyncpg.PostgresConnectionError
         except TimeoutError:
-            raise Exception("Check your PostgreSQL connection, timeout error")
+            raise ConnectionRefusedError("Check your PostgreSQL connection, timeout error")
         except ConnectionRefusedError:
-            raise Exception("Is your PostgreSQL port correct? Connection refused")
+            raise ConnectionRefusedError("Is your PostgreSQL port correct? Connection refused")
         else:
             Log.success("Connection possible. Can proceed further!")
             return True
@@ -78,11 +79,12 @@ class Database:
         roleId: int,
         guildId: int,
         streamerId: int,
+        streamerLogin: str,
         connection: asyncpg.Connection
     ) -> None:
         """Добавляет роль к `roles`, стримера в `streamers` и соединяет их"""
         queryArgs = ((roleId, guildId),
-                     (streamerId,),
+                     (streamerId, streamerLogin),
                      (streamerId, roleId))
         for query, args in zip(Query.ADD_ROLE.value, queryArgs):
             print(query, *args)
@@ -97,6 +99,36 @@ class Database:
     ) -> bool:
         row = await connection.fetchrow(Query.CHECK_IF_LINKED.value, guildId, streamerId)
         return row is not None
+
+    @acquire_connection
+    @staticmethod
+    async def get_role_from_streamer(
+        guildId: int,
+        streamer_login: str,
+        connection: asyncpg.Connection
+    ) -> int:
+        """Получает `id` роли, к которой привязан стример в текущей гильдии"""
+        return await connection.fetchval(Query.GET_GUILD_ROLE_FROM_STREAMER.value,
+                                         guildId,
+                                         streamer_login)
+
+    @acquire_connection
+    @staticmethod
+    async def unlink_role(
+        roleId: int,
+        connection: asyncpg.Connection
+    ) -> None:
+        await connection.execute(Query.DELETE_ROLE_FROM_ROLES.value, roleId)
+
+    @acquire_connection
+    @staticmethod
+    async def update_channel(
+        guildId: int,
+        channelId: int,
+        connection: asyncpg.Connection
+    ) -> None:
+        await connection.execute(Query.UPDATE_COMMAND_CHANNEL.value, guildId, channelId)
+
 
 
 async def main():

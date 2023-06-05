@@ -32,7 +32,7 @@ class LinkView(View):
         self.subscribeButton.disabled = True
         await interaction.response.defer()
         role = await interaction.guild.create_role(name=self.streamerLogin, color=0x7123e7)
-        await self.queryFunction(role.id, interaction.guild_id, self.streamerId)
+        await self.queryFunction(role.id, interaction.guild_id, self.streamerId, self.streamerLogin)
         await interaction.edit_original_response(view=self)
         # await interaction.response.edit_message(view=self)
 

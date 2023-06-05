@@ -6,8 +6,8 @@ class Query(Enum):
 
     CREATE_STREAMERS = """
         CREATE TABLE IF NOT EXISTS streamers (
-            streamer_id INT PRIMARY KEY
-            streamer_login VARCHAR(32) UNIQUE
+            streamer_id INT PRIMARY KEY,
+            streamer_login VARCHAR(32) UNIQUE NOT NULL
         );
     """
 
@@ -44,9 +44,23 @@ class Query(Enum):
     GUILD_REMOVE = "DELETE FROM guilds WHERE guild_id = $1"
     ADD_ROLE = [
         "INSERT INTO roles (role_id, belongs_to) VALUES ($1, $2)",
-        "INSERT INTO streamers (streamer_id) VALUES ($1) ON CONFLICT DO NOTHING",
+        "INSERT INTO streamers (streamer_id, streamer_login) VALUES ($1, $2) ON CONFLICT DO NOTHING",
         "INSERT INTO role_to_streamer (streamer_id, role_id) VALUES ($1, $2)"
     ]
+
+    GET_GUILD_ROLE_FROM_STREAMER = """
+        SELECT role_id
+        FROM role_to_streamer
+        WHERE streamer_id = (
+            SELECT streamer_id
+            FROM streamers
+            WHERE streamer_login = $2
+        ) AND role_id IN (
+            SELECT role_id
+            FROM roles
+            WHERE belongs_to = $1
+        )
+    """
 
     CHECK_IF_LINKED = """
         SELECT belongs_to
@@ -58,3 +72,6 @@ class Query(Enum):
             WHERE streamer_id = $2
          )
     """
+
+    UPDATE_COMMAND_CHANNEL = "UPDATE guilds SET channel_id = $2 WHERE guild_id = $1"
+    DELETE_ROLE_FROM_ROLES = "DELETE FROM roles WHERE role_id = $1"

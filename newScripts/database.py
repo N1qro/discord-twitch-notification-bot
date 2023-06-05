@@ -3,7 +3,7 @@ from asyncio.exceptions import TimeoutError
 from accessify import private
 from logger import Log
 from functools import wraps
-from typing import Optional, Coroutine
+from typing import Optional, List
 from queries import Query
 
 
@@ -128,6 +128,14 @@ class Database:
         connection: asyncpg.Connection
     ) -> None:
         await connection.execute(Query.UPDATE_COMMAND_CHANNEL.value, guildId, channelId)
+
+    @acquire_connection
+    @staticmethod
+    async def get_linked_streamers(
+        guildId: int,
+        connection: asyncpg.Connection
+    ) -> List[asyncpg.Record]:
+        return await connection.fetch(Query.GET_LINKED_STREAMERS.value, guildId)
 
 
 

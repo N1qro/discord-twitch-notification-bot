@@ -73,5 +73,19 @@ class Query(Enum):
          )
     """
 
+    GET_LINKED_STREAMERS = """
+        SELECT streamer_login
+        FROM streamers
+        WHERE streamer_id IN (
+            SELECT streamer_id
+            FROM role_to_streamer
+            WHERE role_id IN (
+                SELECT role_id
+                FROM roles
+                WHERE belongs_to = $1
+            )
+        )
+    """
+
     UPDATE_COMMAND_CHANNEL = "UPDATE guilds SET channel_id = $2 WHERE guild_id = $1"
     DELETE_ROLE_FROM_ROLES = "DELETE FROM roles WHERE role_id = $1"

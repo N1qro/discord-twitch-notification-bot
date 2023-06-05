@@ -49,6 +49,11 @@ intents.guilds = True
 bot = discord.Bot(permissions=perms, intents=intents, debug_guilds=[696434683730329713], loop=loop)
 
 
+async def get_linked_streamers(ctx: discord.AutocompleteContext):
+    data = await ctx.bot.db.get_linked_streamers(ctx.interaction.guild_id)
+    return (record.get("streamer_login") for record in data)
+
+
 @bot.slash_command()
 @commands.has_permissions(administrator=True)
 async def link(
@@ -81,7 +86,7 @@ async def link(
 @commands.has_permissions(administrator=True)
 async def unlink(
     ctx: discord.ApplicationContext,
-    twitch_login: discord.commands.Option(str, autocomplete=basic_autocomplete(("yes")))
+    twitch_login: discord.commands.Option(str, autocomplete=basic_autocomplete(get_linked_streamers))
 ):
     role_id = await bot.db.get_role_from_streamer(ctx.guild_id, twitch_login)
     role = ctx.guild.get_role(role_id)
@@ -107,6 +112,13 @@ async def set_alert_channel(
         await ctx.respond("Successfully updated the alert channel!")
     else:
         await ctx.respond("This channel does not have permission for everyone to read it")
+
+
+@bot.slash_command()
+async def sub(
+    ctx: discord.ApplicationContext,
+    streamer_login: discord.Option(str, autocomplete=basic_autocomplete(get_linked_streamers))
+):
 
 
 async def main():
@@ -135,4 +147,3 @@ if __name__ == "__main__":
 
     loop.run_until_complete(main())
     Log.info("Launching discord bot")
-    asyncio.run(main())

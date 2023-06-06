@@ -1,6 +1,8 @@
 from datetime import datetime
-from colorama import init, Fore, Style
 from enum import Enum
+
+from colorama import Fore, Style, init
+
 init(autoreset=True)
 
 

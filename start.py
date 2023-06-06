@@ -1,43 +1,19 @@
 import asyncio
 import os
-import sys
 
 import discord
-from database import Database
-from embeds import DefaultEmbed, LinkEmbed
-from environ_loader import load_env
-from logger import Log
-from owner_commands import OwnerCog
-from asyncpg.exceptions import PostgresConnectionError
 from discord.ext import commands
 from discord.utils import basic_autocomplete
-from twitch import TwitchRequests
-from ui import LinkView
 
-
-class EventCog(discord.Cog):
-    def __init__(self, bot: discord.Bot):
-        self.bot = bot
-
-    @discord.Cog.listener()
-    async def on_ready(self):
-        Log.success("Bot is ready!")
-
-    @discord.Cog.listener()
-    async def on_connect(self):
-        await self.bot.sync_commands()
-        Log.info("Connected to the servers")
-
-    @discord.Cog.listener()
-    async def on_guild_join(self, guild: discord.Guild):
-        channel = guild.system_channel
-        if channel:
-            channel = channel.id
-        await self.db.add_guild(guild.id, channel)
-
-    @discord.Cog.listener()
-    async def on_guild_remove(self, guild: discord.Guild):
-        await self.db.remove_guild(guild.id)
+from commands.owner import OwnerCog
+from commands.events import EventCog
+from commands.twitch import TwitchCog
+from scripts.database import Database
+from scripts.twitchapi import TwitchRequests
+from ui.embeds import DefaultEmbed, LinkEmbed
+from ui.ui import LinkView
+from utils.environ_loader import load_env
+from utils.logger import Log
 
 
 loop = asyncio.events.new_event_loop()
@@ -82,6 +58,12 @@ async def link(
         ), view=LinkView(bot.db.add_role, data["login"], int(data["id"])))
 
 
+@link.error
+async def error(ctx: discord.ApplicationContext, error: discord.DiscordException):
+    if isinstance(error, commands.errors.MissingPermissions):
+        await ctx.respond("Only the server administrators can run this command")
+
+
 @bot.slash_command()
 @commands.has_permissions(administrator=True)
 async def unlink(
@@ -119,13 +101,16 @@ async def sub(
     ctx: discord.ApplicationContext,
     streamer_login: discord.Option(str, autocomplete=basic_autocomplete(get_linked_streamers))
 ):
+    pass
 
 
 async def main():
     events = EventCog(bot)
     ownerCommands = OwnerCog(bot)
+    twitchCommands = TwitchCog(bot)
     bot.add_cog(events)
     bot.add_cog(ownerCommands)
+    bot.add_cog(twitchCommands)
 
     try:
         bot.db = await Database.connect()
@@ -145,5 +130,5 @@ if __name__ == "__main__":
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    loop.run_until_complete(main())
     Log.info("Launching discord bot")
+    loop.run_until_complete(main())

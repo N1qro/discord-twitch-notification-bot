@@ -1,6 +1,7 @@
-import discord
 from typing import Coroutine
-from discord.ui import View, Button
+
+import discord
+from discord.ui import Button, View
 
 
 class LinkView(View):

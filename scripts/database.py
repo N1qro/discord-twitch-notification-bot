@@ -1,10 +1,12 @@
-import asyncpg
 from asyncio.exceptions import TimeoutError
-from accessify import private
-from logger import Log
 from functools import wraps
-from typing import Optional, List
-from queries import Query
+from typing import List, Optional
+
+import asyncpg
+from accessify import private
+
+from utils.logger import Log
+from utils.queries import Query
 
 
 class Database:
@@ -138,16 +140,14 @@ class Database:
         return await connection.fetch(Query.GET_LINKED_STREAMERS.value, guildId)
 
 
-
-async def main():
-    db = await Database.connect()
-    await db.init_tables()
-    await db.pool.close()
-    print("all good")
-
-
 if __name__ == "__main__":
-    from environ_loader import load_env
-    load_env()
     import asyncio
+    from utils.environ_loader import load_env
+
+    async def main():
+        db = await Database.connect()
+        await db.init_tables()
+        await db.pool.close()
+
+    load_env()
     asyncio.run(main())

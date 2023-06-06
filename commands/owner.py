@@ -1,6 +1,7 @@
-from logger import Log
 import discord
 from discord.ext import commands
+
+from utils.logger import Log
 
 
 class OwnerCog(discord.Cog):

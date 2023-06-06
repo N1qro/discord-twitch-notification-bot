@@ -1,4 +1,6 @@
 import discord
+from ui.embeds import DefaultEmbed
+from scripts.twitchapi import TwitchRequests
 from utils.logger import Log
 
 
@@ -25,3 +27,8 @@ class EventCog(discord.Cog):
     @discord.Cog.listener()
     async def on_guild_remove(self, guild: discord.Guild):
         await self.db.remove_guild(guild.id)
+
+    async def init(self):
+        DefaultEmbed.bot_name = self.bot.user.name
+        DefaultEmbed.bot_thumnail_url = self.bot.user.avatar.url
+        TwitchRequests.init()

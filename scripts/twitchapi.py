@@ -1,5 +1,6 @@
 import asyncio
 import os
+from http import HTTPStatus
 from typing import Union
 
 import aiohttp
@@ -23,12 +24,19 @@ class TwitchRequests:
         }
 
     @classmethod
-    async def getChannelInfo(cls, url) -> Union[dict, None]:
+    async def getChannelInfo(cls, url: str) -> Union[dict, None]:
+        if url.startswith("http") and not \
+           url.startswith("https://www.twitch.tv/"):
+            return HTTPStatus.BAD_REQUEST
+
         login = url[url.rfind("/") + 1:]
         async with aiohttp.ClientSession(headers=cls.headers) as session:
             response = await session.get(url=cls.user_endpoint, params={"login": login})
             data = await response.json()
-            if data["data"]:
+            if data.get("error"):
+                return data["status"]
+
+            if data.get("data"):
                 return data["data"][0]
 
     @classmethod

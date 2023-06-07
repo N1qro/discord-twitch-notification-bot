@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord.utils import basic_autocomplete
 from ui.ui import LinkView
+from http import HTTPStatus
 from ui.embeds import LinkEmbed
 from scripts.twitchapi import TwitchRequests
 from utils.logger import Log
@@ -17,37 +18,37 @@ class TwitchCog(discord.Cog):
         self.bot = bot
 
     @discord.command()
-    async def testing_command_2(self, ctx: discord.ApplicationContext):
-        Log.success("Recognized!")
-        await ctx.respond("Great.")
-
-    @discord.command()
     @commands.has_permissions(administrator=True)
     async def link(
         self,
         ctx: discord.ApplicationContext,
         twitch_url: discord.Option(str, "Enter the twitch streamer link")
     ):
-        try:
-            data = await TwitchRequests.getChannelInfo(twitch_url)
-            if not data:
-                return await ctx.respond("Couldn't find anyone with those credentials")
-        except Exception as e:
-            Log.failure(str(e))
-        else:
-            # Проверка на существование
-            if await self.bot.db.is_already_linked(ctx.guild_id, int(data["id"])):
-                return await ctx.respond(
-                    "This streamer is already linked to this server!"
-                )
+        response = await TwitchRequests.getChannelInfo(twitch_url)
 
-            await ctx.respond(embed=LinkEmbed(
-                twitch_name=data["login"],
-                twitch_description=data["description"],
-                twitch_thumbnail=data["profile_image_url"],
-                creation_date=data["created_at"][:data["created_at"].index("T")],
-                is_partner=data["broadcaster_type"] == "partner"
-            ), view=LinkView(self.bot.db.add_role, data["login"], int(data["id"])))
+        # Обработка HTTP кодов
+        match response:
+            case HTTPStatus.BAD_REQUEST:
+                return await ctx.respond("This is not a valid URL")
+            case HTTPStatus.UNAUTHORIZED:
+                return await ctx.respond("Contact the developer. API key expired")
+
+        # Проверка на существование аккаунта
+        if response is None:
+            return await ctx.respond("Couldn't find anyone with those credentials")
+
+        # Проверка на привязанность
+        if await self.bot.db.is_already_linked(ctx.guild_id, int(response["id"])):
+            return await ctx.respond(
+                "This streamer is already linked to this server!")
+
+        await ctx.respond(embed=LinkEmbed(
+            twitch_name=response["login"],
+            twitch_description=response["description"],
+            twitch_thumbnail=response["profile_image_url"],
+            creation_date=response["created_at"][:response["created_at"].index("T")],
+            is_partner=response["broadcaster_type"] == "partner"
+        ), view=LinkView(self.bot.db.add_role, response["login"], int(response["id"])))
 
     @discord.command()
     @commands.has_permissions(administrator=True)
@@ -88,6 +89,14 @@ class TwitchCog(discord.Cog):
         streamer_login: discord.Option(str, autocomplete=basic_autocomplete(get_linked_streamers))
     ):
         pass
+
+    async def cog_command_error(self, ctx: discord.ApplicationContext, error: Exception):
+        # if isinstance(error, discord.ApplicationCommandInvokeError):
+        #     raise error
+        if isinstance(error, commands.errors.MissingPermissions):
+            await ctx.respond("Only server administators can run this command!")
+        else:
+            raise error
 
 
 # @link.error

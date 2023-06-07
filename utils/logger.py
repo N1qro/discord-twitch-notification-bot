@@ -30,7 +30,7 @@ class Log:
                 timestamp = datetime.now().strftime("%Y-%m-%d %X")
                 timestamp_string = f"{Style.BRIGHT}{Fore.BLACK}{timestamp}"
                 status_string = f"{timestamp_string} {status.value}\t"
-                print(status_string + function(text))
+                print(status_string + function(text), flush=True)
             return wrapper
         return display
 

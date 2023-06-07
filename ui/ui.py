@@ -1,4 +1,4 @@
-from typing import Coroutine
+from scripts.database import Database
 
 import discord
 from discord.ui import Button, View
@@ -7,14 +7,13 @@ from discord.ui import Button, View
 class LinkView(View):
     def __init__(
         self,
-        db_query_function: Coroutine,
         streamer_login: str,
         streamer_id: int,
         *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.queryFunction = db_query_function
+        self.db = Database()
         self.streamerLogin = streamer_login
         self.streamerId = streamer_id
         self.subscribeButton = Button(
@@ -33,7 +32,8 @@ class LinkView(View):
         self.subscribeButton.disabled = True
         await interaction.response.defer()
         role = await interaction.guild.create_role(name=self.streamerLogin, color=0x7123e7)
-        await self.queryFunction(role.id, interaction.guild_id, self.streamerId, self.streamerLogin)
+        await self.db.add_role(role.id, interaction.guild_id, self.streamerId, self.streamerLogin)
+        await self.db.increment_linked_data(interaction.guild_id, 1)
         await interaction.edit_original_response(view=self)
         # await interaction.response.edit_message(view=self)
 

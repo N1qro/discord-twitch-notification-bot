@@ -1,17 +1,27 @@
 from asyncio.exceptions import TimeoutError
 from functools import wraps
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import asyncpg
-from accessify import private
 
 from utils.logger import Log
 from utils.queries import Query
 
 
-class Database:
-    @private
-    def __init__(self, pool) -> None:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class Database(metaclass=Singleton):
+    connected_once = False
+
+    def __init__(self, pool=None) -> None:
+        assert self.connected_once
         """Чтобы создать обьект класса, используйте `Database.connect()`"""
         self.pool = pool
 
@@ -27,6 +37,8 @@ class Database:
     @classmethod
     async def connect(cls):
         """Возвращает обьект `Database` или вызывает исключения если бд недоступна"""
+        assert not cls.connected_once
+        cls.connected_once = True
         status = await cls.check_connection()
         if status is True:
             pool = await asyncpg.create_pool()
@@ -138,6 +150,45 @@ class Database:
         connection: asyncpg.Connection
     ) -> List[asyncpg.Record]:
         return await connection.fetch(Query.GET_LINKED_STREAMERS.value, guildId)
+
+    @acquire_connection
+    @staticmethod
+    async def get_command_channel(
+        guildId: int,
+        connection: asyncpg.Connection
+    ) -> Union[int, None]:
+        return await connection.fetchval(Query.GET_COMMAND_CHANNEL.value, guildId)
+
+    @acquire_connection
+    @staticmethod
+    async def get_linked_data(
+        guildId: int,
+        connection: asyncpg.Connection
+    ) -> int:
+        return await connection.fetchval(Query.GET_LINKED_DATA.value, guildId)
+
+    @acquire_connection
+    @staticmethod
+    async def get_all_guild_roles(
+        guildId: int,
+        connection: asyncpg.Connection
+    ) -> List[int]:
+        records = await connection.fetch(Query.GET_ALL_ROLES.value, guildId)
+        return [record.get("role_id") for record in records]
+
+    @acquire_connection
+    @staticmethod
+    async def increment_linked_data(
+        guildId: int,
+        amount: int,
+        connection: asyncpg.Connection
+    ) -> None:
+        await connection.execute(Query.INCREMENT_LINKED_DATA.value, guildId, amount)
+
+    @acquire_connection
+    @staticmethod
+    async def get_streamer_amount(connection: asyncpg.Connection) -> int:
+        return await connection.fetchval(Query.GET_STREAMER_AMOUNT.value)
 
 
 if __name__ == "__main__":

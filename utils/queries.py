@@ -7,14 +7,16 @@ class Query(Enum):
     CREATE_STREAMERS = """
         CREATE TABLE IF NOT EXISTS streamers (
             streamer_id INT PRIMARY KEY,
-            streamer_login VARCHAR(32) UNIQUE NOT NULL
+            streamer_login VARCHAR(32) UNIQUE NOT NULL,
+            is_online BOOLEAN DEFAULT FALSE NOT NULL
         );
     """
 
     CREATE_GUILDS = """
         CREATE TABLE IF NOT EXISTS guilds (
             guild_id BIGINT PRIMARY KEY,
-            channel_id BIGINT NULL
+            channel_id BIGINT NULL,
+            linked_count SMALLINT NOT NULL CHECK (linked_count >= 0) DEFAULT 0
         );
     """
 
@@ -73,19 +75,30 @@ class Query(Enum):
          )
     """
 
-    GET_LINKED_STREAMERS = """
+    GET_ALL_ROLES = """
+        SELECT role_id
+        FROM roles
+        WHERE belongs_to = $1
+    """
+
+    GET_LINKED_STREAMERS = f"""
         SELECT streamer_login
         FROM streamers
         WHERE streamer_id IN (
             SELECT streamer_id
             FROM role_to_streamer
             WHERE role_id IN (
-                SELECT role_id
-                FROM roles
-                WHERE belongs_to = $1
+                {GET_ALL_ROLES}
             )
         )
     """
 
+    GET_STREAMER_AMOUNT = "SELECT COUNT(*) as amount FROM streamers"
+    INCREMENT_LINKED_DATA = """
+        UPDATE guilds SET linked_count = linked_count + $2
+        WHERE guild_id = $1
+    """
+    GET_LINKED_DATA = "SELECT linked_count FROM guilds WHERE guild_id = $1"
+    GET_COMMAND_CHANNEL = "SELECT channel_id FROM guilds WHERE guild_id = $1 LIMIT 1"
     UPDATE_COMMAND_CHANNEL = "UPDATE guilds SET channel_id = $2 WHERE guild_id = $1"
     DELETE_ROLE_FROM_ROLES = "DELETE FROM roles WHERE role_id = $1"

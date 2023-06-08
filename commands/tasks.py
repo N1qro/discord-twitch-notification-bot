@@ -16,14 +16,19 @@ class Tasks(commands.Cog):
         self.update_presence_task.start()
 
     @staticmethod
-    async def update_presence(bot, amount=None):
+    async def update_presence(bot: discord.Bot, amount=None):
         status = discord.Status.streaming
         activity = discord.Activity(
             name=f"{amount} streamers!",
             type=discord.ActivityType.watching,
             state="State of this",
             details="Some details!",
-            large_image="https://imgur.com/a/19b0Vya")
+            application_id=bot.application_id,
+            assets={
+                "large_image": "python-logo"
+            })
+        print(activity.assets)
+        print(activity.large_image_url)
 
         Log.info("Updating rich presence...")
         await bot.change_presence(activity=activity,

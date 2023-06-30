@@ -6,6 +6,7 @@ import tortoise
 from tortoise import Tortoise
 
 import utils.tasks
+from usercommands.link import LinkCog
 from commands.events import EventCog
 from commands.main import TwitchCog
 from commands.owner import OwnerCog
@@ -47,9 +48,11 @@ async def main():
         events = EventCog(bot)
         ownerCommands = OwnerCog()
         twitchCommands = TwitchCog()
+        userCmds = LinkCog()
         bot.add_cog(events)
         bot.add_cog(ownerCommands)
         bot.add_cog(twitchCommands)
+        bot.add_cog(userCmds)
         utils.tasks.notification_task.start()
 
         await bot.connect()

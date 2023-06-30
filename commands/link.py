@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from os import getenv
 
 import discord
 from discord.ext import commands
@@ -107,3 +108,23 @@ class LinkCog(discord.Cog):
 
         await server.roles.all().delete()
         await ctx.respond("Successfully unlinked!")
+
+    @discord.command(
+        name="get_linked",
+        description="Returns a list of currently linked to this guild streamers")
+    async def get_linked(
+        self,
+        ctx: discord.ApplicationContext
+    ):
+        streamers = await getLinkedStreamers(ctx)
+
+        if len(streamers) == 0:
+            return await ctx.respond("This server does not have anyone linked to it! Use **/link**")
+
+        text = f"This server currently has **{len(streamers)}** linked people\n\n"
+        for i, streamer in enumerate(streamers, start=1):
+            text += f"{i}: *{streamer}*\n"
+
+        text += f"\nYou can link **{int(getenv('LINK_SLOTS')) - len(streamers)}** more streamers"
+
+        await ctx.respond(text)

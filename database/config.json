@@ -1,0 +1,15 @@
+{
+    "connections": {
+        "default": {
+            "engine": "tortoise.backends.asyncpg",
+            "credentials": {}
+        }
+    },
+    "apps": {
+        "discord": {
+            "models": ["database.models"]
+        }
+    },
+    "use_tz": true,
+    "timezone": "UTC"
+}

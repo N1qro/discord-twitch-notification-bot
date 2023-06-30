@@ -1,21 +1,20 @@
-from scripts.database import Database
+from database.models import Server, Streamer, Role
 
 import discord
+from tortoise.transactions import in_transaction
+from tortoise.exceptions import OperationalError
 from discord.ui import Button, View
 
 
 class LinkView(View):
     def __init__(
         self,
-        streamer_login: str,
-        streamer_id: int,
+        streamer: Streamer,
         *args,
         **kwargs
     ):
         super().__init__(*args, **kwargs)
-        self.db = Database()
-        self.streamerLogin = streamer_login
-        self.streamerId = streamer_id
+        self.streamer = streamer
         self.subscribeButton = Button(
             label="Subscribe", style=discord.ButtonStyle.green, emoji="🔔")
         self.cancelButton = Button(
@@ -31,10 +30,26 @@ class LinkView(View):
         self.subscribeButton.emoji = "✨"
         self.subscribeButton.disabled = True
         await interaction.response.defer()
-        role = await interaction.guild.create_role(name=self.streamerLogin, color=0x7123e7)
-        await self.db.add_role(role.id, interaction.guild_id, self.streamerId, self.streamerLogin)
-        await self.db.increment_linked_data(interaction.guild_id, 1)
-        await interaction.edit_original_response(view=self)
+
+        try:
+            async with in_transaction():
+                createdRole = await interaction.guild.create_role(
+                    reason="Linked new streamer for alerts",
+                    name="t.tv/" + self.streamer.login,
+                    color=0x7123e7)
+
+                await Role.create(id=createdRole.id,
+                                  streamer=self.streamer,
+                                  belongs_to_id=interaction.guild_id)
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "Bot does not have **\"Manage roles\"** permissions!")
+        except OperationalError:
+            await createdRole.delete(reason="Link operation failed")
+            await interaction.response.send_message(
+                "Something went wrong with the database. Contact the developer")
+        else:
+            await interaction.edit_original_response(view=self)
         # await interaction.response.edit_message(view=self)
 
     async def cancelCallback(self, interaction: discord.Interaction):
@@ -42,4 +57,6 @@ class LinkView(View):
         self.cancelButton.label = "Cancelled"
         self.cancelButton.emoji = "💥"
         self.cancelButton.disabled = True
+        if not await self.streamer.roles:
+            await self.streamer.delete()
         await interaction.response.edit_message(view=self)

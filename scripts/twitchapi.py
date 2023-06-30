@@ -40,7 +40,7 @@ class TwitchRequests:
                 return data["data"][0]
 
     @classmethod
-    async def areUsersOnline(cls, *ids):
+    async def getOnlineInfo(cls, *ids):
         """
             Accepts `N` amount of ids and returns a list of dictionaries if any of them are online
             Returns only dictionaries of channels which are online at the moment.
@@ -54,20 +54,28 @@ class TwitchRequests:
             data = await response.json()
             return data["data"]
 
+    @classmethod
+    async def checkIfOnline(cls, id):
+        return await cls.getOnlineInfo(id) != []
 
-if __name__ == "__main__":
+
+async def main():
     import dotenv
+    import pprint
     dotenv.load_dotenv()
 
     if os.name == "nt":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-    TwitchRequests.clientID = os.getenv("CLIENT_ID")
-    TwitchRequests.authorization = f"Bearer {os.getenv('ACCESS_TOKEN')}"
-    TwitchRequests.headers = {
-        "Client-ID": TwitchRequests.clientID,
-        "Authorization": TwitchRequests.authorization
-    }
+    TwitchRequests.init()
+    id1 = 698949731
+    id2 = 44390855
+    data = await TwitchRequests.getOnlineInfo(id1, id2)
 
-    # print(asyncio.run(TwitchRequests.getChannelInfo("https://www.twitch.tv/riotgames")))
-    # print(asyncio.run(TwitchRequests.areUsersOnline("39154778", "36029255")))
+    for index, row in enumerate(data, start=1):
+        print(f"ROW: {index}")
+        pprint.pprint(row)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

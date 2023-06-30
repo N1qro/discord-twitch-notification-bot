@@ -8,7 +8,6 @@ from discord.ext import tasks, commands
 class Tasks(commands.Cog):
     def __init__(self, bot: discord.Bot):
         self.bot = bot
-        self.db = Database()
         self.cached_streamers_amount = -1
 
     def startall(self):

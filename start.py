@@ -1,4 +1,7 @@
 import asyncio
+import tortoise
+from tortoise import Tortoise
+from database.models import Streamer, Role, Server
 import os
 
 import discord
@@ -22,7 +25,8 @@ bot = discord.Bot(intents=intents, debug_guilds=[696434683730329713], loop=loop)
 
 async def main():
     try:
-        await Database.connect()
+        await Tortoise.init(config_file=os.path.join("database", "config.json"))
+        await Tortoise.generate_schemas(safe=True)
     except ConnectionRefusedError as e:
         return Log.failure(str(e))
     else:
@@ -30,7 +34,7 @@ async def main():
         ownerCommands = OwnerCog(bot)
         twitchCommands = TwitchCog(bot)
         tasks = Tasks(bot)
-        tasks.startall()
+        # tasks.startall()
         bot.add_cog(events)
         bot.add_cog(ownerCommands)
         bot.add_cog(twitchCommands)
@@ -39,6 +43,8 @@ async def main():
         await bot.application_info()
         await events.init()
         await bot.connect()
+    finally:
+        await tortoise.connections.close_all()
 
 
 if __name__ == "__main__":

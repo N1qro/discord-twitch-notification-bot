@@ -19,7 +19,6 @@ class Log:
         raise NotImplementedError(f"Cannot create instance of {type(self)} class")
 
     # "Движок" логгера
-    @staticmethod
     def display(status: Status):
         """
             Декоратор, ставящий перед возвращаемым функции текстом

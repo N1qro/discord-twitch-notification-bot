@@ -1,4 +1,5 @@
 import asyncio
+import math
 import os
 from http import HTTPStatus
 from typing import Union
@@ -6,7 +7,7 @@ from typing import Union
 import aiohttp
 
 
-class TwitchRequests:
+class Request:
     # // Мета
     clientID = authorization = headers = None
 
@@ -45,37 +46,31 @@ class TwitchRequests:
             Accepts `N` amount of ids and returns a list of dictionaries if any of them are online
             Returns only dictionaries of channels which are online at the moment.
         """
-        async with aiohttp.ClientSession(headers=cls.headers) as session:
-            newUrl = cls.streams_endpoint + \
-                f"?type=all&first={len(ids)}&" + \
-                "&".join([f"user_id={uid}" for uid in ids])
+        ids = list(ids)
 
-            response = await session.get(url=newUrl)
-            data = await response.json()
-            return data["data"]
+        bundles = []
+        while len(ids) >= 100:
+            bundles.append(ids[:100])
+            del ids[:100]
+        if ids:
+            bundles.append(ids[:])
+
+        async with aiohttp.ClientSession(headers=cls.headers) as session:
+            tasks = []
+            for bundle in bundles:
+                newUrl = cls.streams_endpoint + \
+                    f"?type=all&first={len(bundle)}&" + \
+                    "&".join([f"user_id={uid}" for uid in bundle])
+
+                tasks.append(session.get(url=newUrl))
+
+            meta = []
+            for response in await asyncio.gather(*tasks, return_exceptions=True):
+                data = await response.json()
+                meta.extend(data["data"])
+
+            return meta
 
     @classmethod
     async def checkIfOnline(cls, id):
         return await cls.getOnlineInfo(id) != []
-
-
-async def main():
-    import dotenv
-    import pprint
-    dotenv.load_dotenv()
-
-    if os.name == "nt":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    TwitchRequests.init()
-    id1 = 698949731
-    id2 = 44390855
-    data = await TwitchRequests.getOnlineInfo(id1, id2)
-
-    for index, row in enumerate(data, start=1):
-        print(f"ROW: {index}")
-        pprint.pprint(row)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

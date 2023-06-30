@@ -5,13 +5,12 @@ from utils.logger import Log
 
 
 class OwnerCog(discord.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-
-    @discord.slash_command(description="Yes", hidden=True)
+    @discord.slash_command(
+        name="shutdown",
+        description="Shuts down the bot. For bot owner only",
+        hidden=True)
     @commands.is_owner()
     async def shutdown(self, ctx: discord.ApplicationContext):
         await ctx.respond("Shutting down..")
-        # await ctx.send("Shutting down...")
         Log.info(f"Manual shutdown initiated by {ctx.author.name}")
-        await self.bot.close()
+        await ctx.bot.close()

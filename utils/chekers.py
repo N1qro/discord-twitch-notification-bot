@@ -1,11 +1,14 @@
 import discord
-import os
-from database.models import Server
 from discord.ext import commands
+
+from database.models import Server
 from utils.exceptions import NoAlertChannelSet, NoLinkedSlotsLeft
 
+LINK_SLOTS = None
 
-def has_alert_channel_set():
+
+def hasAlertChannelSet():
+    """Проверка: Установлен ли канал для оповещений, или нет?"""
     async def predicate(ctx: discord.ApplicationContext):
         server = await Server.get(id=ctx.guild_id)
 
@@ -15,11 +18,12 @@ def has_alert_channel_set():
     return commands.check(predicate)
 
 
-def has_empty_link_slot():
+def hasEmptyLinkSlot():
+    """Проверка: Есть ли свободный слот для привязки стримера?"""
     async def predicate(ctx: discord.ApplicationContext):
         server = await Server.get(id=ctx.guild_id)
 
-        if server.linked_count >= int(os.getenv("LINK_SLOTS")):
-            raise NoLinkedSlotsLeft(f"You already have **{int(os.getenv('LINK_SLOTS'))}** link slots set!")
+        if server.linked_count >= LINK_SLOTS:
+            raise NoLinkedSlotsLeft(f"You already have **{LINK_SLOTS}** link slots set!")
         return True
     return commands.check(predicate)

@@ -1,7 +1,8 @@
-from tortoise.models import Model
 from tortoise import fields
-from tortoise.signals import Signals, post_save
-from tortoise.fields import IntField, BigIntField, CharField, ForeignKeyField, BooleanField, SmallIntField
+from tortoise.fields import (BigIntField, BooleanField, CharField,
+                             ForeignKeyField, IntField, SmallIntField)
+from tortoise.models import Model
+from tortoise.signals import Signals
 
 
 class Streamer(Model):
@@ -23,7 +24,8 @@ class Role(Model):
                                  on_delete=fields.CASCADE)
 
     @staticmethod
-    async def update_linked_count(sender, instance, wasCreated, *a):
+    async def update_linked_count(_, instance, wasCreated, *a):
+        """Обновление `Server.linked_count`, при создании или удалении роли"""
         if not wasCreated:
             return
 
@@ -44,5 +46,6 @@ class Server(Model):
         return f"<Server {self.id}>"
 
 
+# Установка эвентов на сохранение/удаление роли
 Role.register_listener(Signals.post_delete, Role.update_linked_count)
 Role.register_listener(Signals.post_save, Role.update_linked_count)

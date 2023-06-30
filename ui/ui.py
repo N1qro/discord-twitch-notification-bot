@@ -1,9 +1,9 @@
-from database.models import Server, Streamer, Role
-
 import discord
-from tortoise.transactions import in_transaction
-from tortoise.exceptions import OperationalError
 from discord.ui import Button, View
+from tortoise.exceptions import OperationalError
+from tortoise.transactions import in_transaction
+
+from database.models import Role, Streamer
 
 
 class LinkView(View):
@@ -13,10 +13,11 @@ class LinkView(View):
         *args,
         **kwargs
     ):
+        """Интерфейс из 2 кнопок, для привязки стримеров"""
         super().__init__(*args, **kwargs)
         self.streamer = streamer
         self.subscribeButton = Button(
-            label="Subscribe", style=discord.ButtonStyle.green, emoji="🔔")
+            label="Link", style=discord.ButtonStyle.green, emoji="🔔")
         self.cancelButton = Button(
             label="Cancel", style=discord.ButtonStyle.red, emoji="⛔")
         self.subscribeButton.callback = self.subscribeCallback
@@ -26,7 +27,7 @@ class LinkView(View):
 
     async def subscribeCallback(self, interaction: discord.Interaction):
         self.remove_item(self.cancelButton)
-        self.subscribeButton.label = "Subscribed!"
+        self.subscribeButton.label = "Linked!"
         self.subscribeButton.emoji = "✨"
         self.subscribeButton.disabled = True
         await interaction.response.defer()
